@@ -8,10 +8,8 @@ const GObject = imports.gi.GObject;
 const Me = ExtensionUtils.getCurrentExtension();
 const Utils = Me.imports.utils;
 
-const AudioOutputSubMenu = GObject.registerClass(
-	class AudioOutputSubMenu extends PopupMenu.PopupSubMenuMenuItem {
-	_init() {
-		super._init("Audio Output: Connecting...", true);
+const AbstractAudioOutputSubMenu = {
+	_init: function() {
 		this._control = Main.panel.statusArea.aggregateMenu._volume._control;
 
 		this._controlSignal = this._control.connect('default-sink-changed', () => {
@@ -29,18 +27,18 @@ const AudioOutputSubMenu = GObject.registerClass(
 		//Unless there is at least one item here, no 'open' will be emitted...
 		let item = new PopupMenu.PopupMenuItem('Connecting...');
 		this.menu.addMenuItem(item);
-	}
-
-	_updateDefaultSink() {
+	},
+	
+	_updateDefaultSink: function() {
 		let defsink = this._control.get_default_sink();
 		//Unfortunately, Gvc neglects some pulse-devices, such as all "Monitor of ..."
 		if (!defsink)
 			this.label.set_text("Other");
 		else
 			this.label.set_text(defsink.get_description());
-	}
-
-	_updateSinkList() {
+	},
+	
+	_updateSinkList: function() {
 		this.menu.removeAll();
 
 		let defsink = this._control.get_default_sink();
@@ -62,13 +60,59 @@ const AudioOutputSubMenu = GObject.registerClass(
 			let item = new PopupMenu.PopupMenuItem("No more Devices");
 			this.menu.addMenuItem(item);
 		}
-	}
+	},
 
-	destroy() {
+	destroy: function() {
 		this._control.disconnect(this._controlSignal);
-		super.destroy();
 	}
-});
+};
+
+let AudioOutputSubMenu;
+try {
+	AudioOutputSubMenu = GObject.registerClass(
+		class AudioOutputSubMenu extends PopupMenu.PopupSubMenuMenuItem {	
+		_init() {
+			super._init("Audio Output: Connecting...", true);
+			AbstractAudioOutputSubMenu._init.call(this);
+		}
+
+		_updateDefaultSink() {
+			AbstractAudioOutputSubMenu._updateDefaultSink.call(this);
+		}
+
+		_updateSinkList() {
+			AbstractAudioOutputSubMenu._updateSinkList.call(this);
+		}
+
+		destroy() {
+			AbstractAudioOutputSubMenu.destroy.call(this);
+			super.destroy();
+		}
+	});
+} catch(err) {
+	AudioOutputSubMenu = new Lang.Class({
+		Name: 'AudioOutputSubMenu',
+		Extends: PopupMenu.PopupSubMenuMenuItem,
+		
+		_init: function() {
+			this.parent("Audio Output: Connecting...", true);
+			AbstractAudioOutputSubMenu._init.call(this);
+		},
+
+		_updateDefaultSink: function() {
+			AbstractAudioOutputSubMenu._updateDefaultSink.call(this);
+		},
+
+		_updateSinkList: function() {
+			AbstractAudioOutputSubMenu._updateSinkList.call(this);
+		},
+
+		destroy: function() {
+			AbstractAudioOutputSubMenu.destroy.call(this);
+			this.parent();
+		}
+	});
+}
 
 let sinkIndex = 0;
 let settings = null;
