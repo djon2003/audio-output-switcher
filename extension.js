@@ -1,4 +1,5 @@
 const ExtensionUtils = imports.misc.extensionUtils;
+const Lang = imports.lang;
 const Meta = imports.gi.Meta;
 const Main = imports.ui.main;
 const PopupMenu = imports.ui.popupMenu;
